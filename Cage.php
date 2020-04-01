@@ -1,65 +1,71 @@
 <?php
-declare(strict_types=1);
-require_once 'Animal.php';
 
-class CageIsOccupied extends LogicException
-{
-}
+declare(strict_types=1);
+
+require_once 'Animal.php';
 
 class Cage
 {
-    private int $cageNr = 0;
-    private bool $isEmpty = true;
-    private ?AnimalInterface $animalInCage;
-    private string $createdAt = '';
+    private int $id;
+    private ?Animal $animal = null;
+    private ?string $createdAt = null;
 
-    public function __construct(int $cageNr, ?string $createdAt=null, ?AnimalInterface $animalInCage = null)
+    public function __construct(int $id, ?Animal $animal = null, ?string $createdAt = null)
     {
-        $this->cageNr = $cageNr;
+        $this->id = $id;
 
-        if (!is_null($createdAt)) {
-            $this->createdAt = $createdAt;
-        } else {
-            $this->createdAt = date("Y.m.d h:i:sA");
+        if ($animal !== null) {
+            $this->occupyCage($animal);
         }
 
-        if ($animalInCage !== null) {
-            $this->occupyCage($animalInCage);
-        }
+        $this->createdAt = $this->createdAt ?? date("Y.m.d h:i:sA");
     }
 
     public function isEmpty(): bool
     {
-        return $this->isEmpty;
+        return $this->animal === null;
     }
 
-    public function occupyCage(AnimalInterface $animal)
+    public function occupyCage(Animal $animal)
     {
-        if (!$this->isEmpty) {
-            throw new CageIsOccupied('This cage is already occupied with ' . $this->animalInCage->getName());
+        if (! $this->isEmpty()) {
+            throw new LogicException('This cage is already occupied with ' . $this->animal->getName());
         }
-        $this->animalInCage = $animal;
-        $this->isEmpty = false;
+
+        $this->animal = $animal;
     }
 
-    public function getCageNr(): int
+    public function getId(): int
     {
-        return $this->cageNr;
+        return $this->id;
     }
 
-    public function getAnimal(): AnimalInterface
+    public function getAnimal(): Animal
     {
-        return $this->animalInCage;
+        return $this->animal;
     }
 
     public function removeAnimal(): void
     {
-        $this->animalInCage = null;
-        $this->isEmpty = true;
+        $this->animal = null;
     }
 
-    public function getTimeCreatedAt(): string
+    public function getCreatedAt(): string
     {
         return $this->createdAt;
+    }
+
+    public function toArray(): array
+    {
+        $animal = $this->animal;
+
+        return [
+            'id' => $this->getId(),
+            'occupied' => ! $this->isEmpty(),
+            'name' => $animal ? $this->getAnimal()->getName() : null,
+            'weight' => $animal ? $animal->getWeight() : null,
+            'gender' => $animal ? $animal->getGender() : null,
+            'createdAt' => $this->getCreatedAt()
+        ];
     }
 }

@@ -1,171 +1,156 @@
 <?php
+
 declare(strict_types=1);
+
 require_once 'Cage.php';
 require_once 'FileManager.php';
-
-class FormatArray
-{
-    static function format(array $toFormat): array
-    {
-        return array_map(function ($value) {
-            return $value === "" ? "-" : $value;
-        }, $toFormat);
-    }
-}
-
-class CageIsEmpty extends LogicException
-{
-}
-
-class InvalidCageNumber extends InvalidArgumentException
-{
-}
+require_once 'FormatArray.php';
 
 class CageManager
 {
-    private const HEADER = [
-        'cageNr' => 'Cage number'
-        , 'occupied' => 'Is occupied'
-        , 'name' => 'Name'
-        , 'weight' => 'Weight'
-        , 'gender' => 'Gender'
-        , 'createdAt' => 'Cage created'];
+    private const CAGE_ID = 'id';
+    private const OCCUPIED = 'occupied';
+    private const NAME = 'name';
+    private const WEIGHT = 'weight';
+    private const GENDER = 'gender';
+    private const CREATED_AT = 'createdAt';
 
-    public array $existingCages = [];
+    private const HEADERS = [
+        self::CAGE_ID => 'Cage number',
+        self::OCCUPIED => 'Occupied',
+        self::NAME => 'Name',
+        self::WEIGHT => 'Weight',
+        self::GENDER => 'Gender',
+        self::CREATED_AT => 'Created at',
+    ];
+
+    public array $cages = [];
 
     public function __construct()
     {
-        $this->initializeFromFile();
+        $this->initialize();
     }
 
-    public function validateCageNr($cageNr): bool
+    public function validateCageId(int $cageId): bool
     {
-        if ((array_key_exists($cageNr, $this->existingCages)) === true) {
-            return false;
-        }
-        return true;
+        return !array_key_exists($cageId, $this->cages);
     }
 
-    public function destroyCage(int $cageNr): void
+    public function destroyCage(int $cageId): void
     {
-        if ($this->validateCageNr($cageNr)) {
-            throw new InvalidCageNumber($cageNr . ' is invalid cage number');
+        if ($this->validateCageId($cageId)) {
+            throw new InvalidArgumentException($cageId . ' is invalid cage number');
         }
 
-        unset($this->existingCages[$cageNr]);
-        FileManager::overWriteData($this->existingCages, self::HEADER);
+        unset($this->cages[$cageId]);
+        $this->save();
     }
 
-    public function createNewCage(?AnimalInterface $animal = null)
+    public function createNewCage(?Animal $animal = null)
     {
-        $newCageNr = $this->generateCageNr();
-        if (!is_null($animal)) {
-            $newCage = new Cage($newCageNr, null, $animal);
-            $this->existingCages[$newCage->getCageNr()] = $newCage;
-            FileManager::addNewRow($newCageNr, $newCage->getTimeCreatedAt(), $animal);
-        } else {
-            $newCage = new Cage($newCageNr);
-            $this->existingCages[$newCage->getCageNr()] = $newCage;
-            FileManager::addNewRow($newCageNr, $newCage->getTimeCreatedAt());
-        }
+        /** @var Cage $lastCage */
+        $lastCage = end($this->cages);
+        $cageId = $lastCage ? $lastCage->getId() + 1 : 1;
+
+        $cage = new Cage($cageId, $animal);
+        $this->cages[$cage->getId()] = $cage;
+        $this->save();
     }
 
-    public function putAnimalInCage(int $emptyCageNr, AnimalInterface $animal)
+    public function putAnimalInCage(int $cageId, Animal $animal)
     {
-        $this->existingCages[$emptyCageNr]->occupyCage($animal);
-        FileManager::overWriteData($this->existingCages, self::HEADER);
+        $this->cages[$cageId]->occupyCage($animal);
+        $this->save();
     }
 
-    public function removeAnimalFromCage(int $cageNr)
+    public function removeAnimalFromCage(int $cageId)
     {
-        if ($this->validateCageNr($cageNr)) {
-            throw new InvalidCageNumber('This cage doesnt`t exists1');
-        }
-        if ($this->existingCages[$cageNr]->isEmpty()) {
-            throw new CageIsEmpty('This cage is already empty!');
+        /** @var Cage $cage */
+        $cage = $this->cages[$cageId];
+
+        if ($this->validateCageId($cageId)) {
+            throw new InvalidArgumentException('This cage doesnt`t exists!');
         }
 
-        $this->existingCages[$cageNr]->removeAnimal();
-        FileManager::overWriteData($this->existingCages, self::HEADER);
-    }
-
-    private function generateCageNr(): int
-    {
-        $cageNr = rand(1, 100);
-        if (!$this->validateCageNr($cageNr)) {
-            $this->generateCageNr();
+        if ($cage->isEmpty()) {
+            throw new InvalidArgumentException('This cage is already empty!');
         }
-        return $cageNr;
+
+        $cage->removeAnimal();
+        $this->save();
     }
 
     public function getEmptyCages(): string
     {
-        $emptyCages = [];
-        foreach ($this->existingCages as $cageNr => $cage) {
-            if ($cage->isEmpty()) {
-                $emptyCages[] = $cageNr;
-            }
+        $cages = array_filter($this->cages, function (Cage $cage) {
+            return $cage->isEmpty();
+        });
+
+        $table = new Console_Table();
+        $table->setHeaders(self::HEADERS);
+        foreach ($cages as $cage) {
+            /** @var Cage $cage */
+            $table->addRow($cage->toArray());
         }
-        $emptyCageTable = new Console_Table();
-        $emptyCageTable->setHeaders(['Empty Cage Number']);
-        foreach ($emptyCages as $cage) {
-            $emptyCageTable->addRow([$cage]);
-        }
-        return $emptyCageTable->getTable();
+        return $table->getTable();
     }
 
     public function getFullCages(): string
     {
-        $fullCageTable = new Console_Table();
-        $fullCageTable->setHeaders(self::HEADER);
-        $fullCages = [];
+        $table = new Console_Table();
+        $table->setHeaders(self::HEADERS);
 
-        foreach ($this->existingCages as $cageNr => $cage) {
-            if (!$cage->isEmpty()) {
-                $fullCages[] = $this->existingCages[$cageNr];
-            }
+        $cages = array_filter($this->cages, function (Cage $cage) {
+            return ! $cage->isEmpty();
+        });
+
+        foreach ($cages as $cage) {
+            /** @var Cage $cage */
+            $table->addRow($cage->toArray());
         }
-        foreach ($fullCages as $cage) {
-            $animalProperties = $cage->getAnimal()->getAllAnimalProperties();
-            $row = [$cage->getCageNr(), $cage->isEmpty() ? '-' : 'occupied'];
-            foreach ($animalProperties as $animalProperty) {
-                $row[] = $animalProperty;
-            }
-            $row[] = $cage->getTimeCreatedAt();
-            $fullCageTable->addRow($row);
-        }
-        return $fullCageTable->getTable();
+
+        return $table->getTable();
     }
 
     public function getDataTable(): string
     {
         $table = new Console_Table();
-        $table->setHeaders(self::HEADER);
-        $data = FileManager::getData();
+        $table->setHeaders(self::HEADERS);
+        $cages = FileManager::getData();
 
-        while (!empty($data)) {
-            $table->addRow(FormatArray::format($data[0]));
-            array_shift($data);
+        foreach ($cages as $cage) {
+            $table->addRow($cage);
         }
+
         return $table->getTable();
     }
 
-    // Im building cage and animal objects from csv file
-    private function initializeFromFile(): void
+    private function initialize(): void
     {
-        $data = FileManager::getData();
-        foreach ($data as $cage) {
-            if (!empty($cage[self::HEADER['occupied']])) {
-                $this->existingCages[(int)$cage[self::HEADER['cageNr']]] =
-                    new Cage((int)$cage[self::HEADER['cageNr']], $cage[self::HEADER['createdAt']]
-                        , new Animal($cage[self::HEADER['name']]
-                            , (float)$cage[self::HEADER['weight']]
-                            , $cage[self::HEADER['gender']]));
-            } else {
-                $this->existingCages[(int)$cage[self::HEADER['cageNr']]] =
-                    new Cage((int)$cage[self::HEADER['cageNr']]
-                        , $cage[self::HEADER['createdAt']]);
+        $cagesData = FileManager::getData();
+
+        foreach ($cagesData as $cageData) {
+            $cage = new Cage(
+                (int) $cageData[self::CAGE_ID],
+                null,
+                $cageData[self::CREATED_AT]
+            );
+
+            if (!empty($cageData[self::OCCUPIED])) {
+                $animal = new Animal(
+                    $cageData[self::NAME],
+                    (float)$cageData[self::WEIGHT],
+                    $cageData[self::GENDER]
+                );
+                $cage->occupyCage($animal);
             }
+
+            $this->cages[(int)$cageData[self::CAGE_ID]] = $cage;
         }
+    }
+
+    private function save(): void
+    {
+        FileManager::save($this->cages, array_keys(self::HEADERS));
     }
 }

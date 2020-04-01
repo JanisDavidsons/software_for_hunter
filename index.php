@@ -1,4 +1,5 @@
 <?php
+
 require_once 'libraries/Table.php';
 require_once 'CageManager.php';
 require_once 'Animal.php';
@@ -51,7 +52,7 @@ while ($softWareRunning) {
                 $cageManager->createNewCage(new Animal($name, $weight, $gender));
                 echo $cageManager->getDataTable() . PHP_EOL;
                 echo "\e[1;33m" . 'Your ' . $name . ' is added to cage!' . "\e[0m" . PHP_EOL;
-            } catch (InvalidAnimalName | InvalidAnimalGender $exception) {
+            } catch (InvalidArgumentException $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
             break;
@@ -70,7 +71,7 @@ while ($softWareRunning) {
                 $cageManager->putAnimalInCage($cageNr
                     , new Animal($animalData['name'], (float)$animalData['weight'], $animalData['gender']));
                 echo $cageManager->getDataTable() . PHP_EOL;
-            } catch (CageIsOccupied $exception) {
+            } catch (LogicException $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
             break;
@@ -79,7 +80,7 @@ while ($softWareRunning) {
             try {
                 $cageManager->removeAnimalFromCage($cageNr);
                 echo $cageManager->getDataTable() . PHP_EOL;
-            } catch (InvalidCageNumber | CageIsEmpty $exception) {
+            } catch (InvalidArgumentException $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
             break;
@@ -89,7 +90,7 @@ while ($softWareRunning) {
             try {
                 $cageManager->destroyCage($cageNr);
                 echo $cageManager->getDataTable() . PHP_EOL;
-            } catch (CageIsOccupied $exception) {
+            } catch (LogicException $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
             break;

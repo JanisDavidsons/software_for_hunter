@@ -1,33 +1,15 @@
 <?php
+
 declare(strict_types=1);
 
-class InvalidAnimalGender extends InvalidArgumentException
+class Animal
 {
-}
+    public const GENDER_MALE = 'male';
+    public const GENDER_FEMALE = 'female';
 
-class InvalidAnimalName extends InvalidArgumentException
-{
-}
-
-class InvalidAnimalWeight extends InvalidArgumentException
-{
-}
-
-interface AnimalInterface
-{
-    public function getGender(): string;
-
-    public function getWeight(): float;
-
-    public function getName(): string;
-    public function getAllAnimalProperties():array ;
-}
-
-class Animal implements AnimalInterface
-{
-    public const GENDER = [
-        'male',
-        'female'
+    public const GENDERS = [
+        self::GENDER_MALE,
+        self::GENDER_FEMALE
     ];
 
     private string $name;
@@ -36,30 +18,14 @@ class Animal implements AnimalInterface
 
     public function __construct(string $name, float $weight, string $gender)
     {
-        if (strlen($name) < 3 | preg_match('/\d/', $name)) {
-            throw new InvalidAnimalName($name . ' is invalid animal name');
-        }
-        if ($weight < 0 || $weight > 150) {
-            throw new InvalidAnimalWeight('Please check your animal wight ' . $weight . ' is not right.');
-        }
-
-        $this->name = $name;
-        $this->weight = $weight;
+        $this->setName($name);
+        $this->setWeight($weight);
         $this->setGender($gender);
     }
 
     public function getGender(): string
     {
         return $this->gender;
-    }
-
-    private function setGender(string $gender): void
-    {
-        if (in_array($gender, self::GENDER)) {
-            $this->gender = $gender;
-            return;
-        }
-        throw new InvalidAnimalGender('Unknown gender supplied!');
     }
 
     public function getWeight(): float
@@ -75,5 +41,32 @@ class Animal implements AnimalInterface
     public function getAllAnimalProperties(): array
     {
         return get_object_vars($this);
+    }
+
+    private function setName(string $name): void
+    {
+        if (strlen($name) < 3 | preg_match('/\d/', $name)) {
+            throw new InvalidArgumentException($name . ' is invalid animal name');
+        }
+
+        $this->name = $name;
+    }
+
+    private function setWeight(float $weight): void
+    {
+        if ($weight < 0 || $weight > 150) {
+            throw new InvalidArgumentException('Please check your animal wight ' . $weight . ' is not right.');
+        }
+
+        $this->weight = $weight;
+    }
+
+    private function setGender(string $gender): void
+    {
+        if (! in_array($gender, self::GENDERS)) {
+            throw new InvalidArgumentException('Unknown gender supplied!');
+        }
+
+        $this->gender = $gender;
     }
 }
