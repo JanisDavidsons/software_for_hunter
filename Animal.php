@@ -1,8 +1,17 @@
 <?php
 declare(strict_types=1);
-class InvalidAnimalGender extends InvalidArgumentException{}
-class InvalidAnimalName extends InvalidArgumentException{}
-class InvalidAnimalWeight extends InvalidArgumentException{}
+
+class InvalidAnimalGender extends InvalidArgumentException
+{
+}
+
+class InvalidAnimalName extends InvalidArgumentException
+{
+}
+
+class InvalidAnimalWeight extends InvalidArgumentException
+{
+}
 
 interface AnimalInterface
 {
@@ -11,6 +20,7 @@ interface AnimalInterface
     public function getWeight(): float;
 
     public function getName(): string;
+    public function getAllAnimalProperties():array ;
 }
 
 class Animal implements AnimalInterface
@@ -27,7 +37,7 @@ class Animal implements AnimalInterface
     public function __construct(string $name, float $weight, string $gender)
     {
         if (strlen($name) < 3 | preg_match('/\d/', $name)) {
-            throw new InvalidAnimalName($name.' is invalid animal name');
+            throw new InvalidAnimalName($name . ' is invalid animal name');
         }
         if ($weight < 0 || $weight > 150) {
             throw new InvalidAnimalWeight('Please check your animal wight ' . $weight . ' is not right.');
@@ -60,5 +70,10 @@ class Animal implements AnimalInterface
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getAllAnimalProperties(): array
+    {
+        return get_object_vars($this);
     }
 }

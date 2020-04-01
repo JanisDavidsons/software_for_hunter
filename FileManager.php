@@ -6,9 +6,13 @@ class FileManager
 {
     public static function getData(): array
     {
-        $dataWithHeader = array_map('str_getcsv', file(CAGES));
-        array_shift($dataWithHeader);
-        return $dataWithHeader;
+        $rawData = array_map('str_getcsv', file(CAGES));
+        $header = array_shift($rawData);      //dropping header part
+        $result = [];
+        foreach ($rawData as $cage){
+            $result[] = array_combine($header,$cage);
+        }
+        return $result;
     }
 
     public static function addNewRow(int $cageNr,string $createdAt, ?AnimalInterface $animal = null)

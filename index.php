@@ -32,6 +32,7 @@ while ($softWareRunning) {
     echo "\e[0;32m To add new animal existing new cage :\e[0;34m type 5 \e[0m" . PHP_EOL;
     echo "\e[0;32m To remove animal from cage :\e[0;34m type 6 \e[0m" . PHP_EOL;
     echo "\e[0;32m To destroy cage :\e[0;34m type 7 \e[0m" . PHP_EOL;
+    echo "\e[0;32m To get cages with animals in it :\e[0;34m type 8 \e[0m" . PHP_EOL;
     echo "\e[0;32m To stop software:\e[0;34m type 9 \e[0m" . PHP_EOL;
 
     $hunterCommand = readline('Please enter your command: ');
@@ -78,7 +79,7 @@ while ($softWareRunning) {
             try {
                 $cageManager->removeAnimalFromCage($cageNr);
                 echo $cageManager->getDataTable() . PHP_EOL;
-            } catch (CageIsEmpty $exception) {
+            } catch (InvalidCageNumber | CageIsEmpty $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
             break;
@@ -91,6 +92,9 @@ while ($softWareRunning) {
             } catch (CageIsOccupied $exception) {
                 echo "\e[0;31m" . $exception->getMessage() . "\e[0m" . PHP_EOL;
             }
+            break;
+        case 8:
+            echo $cageManager->getFullCages() . PHP_EOL;
             break;
         case 9:
             $softWareRunning = false;

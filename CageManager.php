@@ -23,7 +23,13 @@ class InvalidCageNumber extends InvalidArgumentException
 
 class CageManager
 {
-    private const HEADER = ['Cage number', 'Is occupied', 'Name', 'Weight', 'Gender', 'Cage created'];
+    private const HEADER = [
+        'cageNr' => 'Cage number'
+        , 'occupied' => 'Is occupied'
+        , 'name' => 'Name'
+        , 'weight' => 'Weight'
+        , 'gender' => 'Gender'
+        , 'createdAt' => 'Cage created'];
 
     public array $existingCages = [];
 
@@ -54,13 +60,13 @@ class CageManager
     {
         $newCageNr = $this->generateCageNr();
         if (!is_null($animal)) {
-            $newCage = new Cage($newCageNr,null, $animal);
+            $newCage = new Cage($newCageNr, null, $animal);
             $this->existingCages[$newCage->getCageNr()] = $newCage;
             FileManager::addNewRow($newCageNr, $newCage->getTimeCreatedAt(), $animal);
         } else {
             $newCage = new Cage($newCageNr);
             $this->existingCages[$newCage->getCageNr()] = $newCage;
-            FileManager::addNewRow($newCageNr,$newCage->getTimeCreatedAt());
+            FileManager::addNewRow($newCageNr, $newCage->getTimeCreatedAt());
         }
     }
 
@@ -72,6 +78,9 @@ class CageManager
 
     public function removeAnimalFromCage(int $cageNr)
     {
+        if ($this->validateCageNr($cageNr)) {
+            throw new InvalidCageNumber('This cage doesnt`t exists1');
+        }
         if ($this->existingCages[$cageNr]->isEmpty()) {
             throw new CageIsEmpty('This cage is already empty!');
         }
@@ -105,6 +114,29 @@ class CageManager
         return $emptyCageTable->getTable();
     }
 
+    public function getFullCages(): string
+    {
+        $fullCageTable = new Console_Table();
+        $fullCageTable->setHeaders(self::HEADER);
+        $fullCages = [];
+
+        foreach ($this->existingCages as $cageNr => $cage) {
+            if (!$cage->isEmpty()) {
+                $fullCages[] = $this->existingCages[$cageNr];
+            }
+        }
+        foreach ($fullCages as $cage) {
+            $animalProperties = $cage->getAnimal()->getAllAnimalProperties();
+            $row = [$cage->getCageNr(), $cage->isEmpty() ? '-' : 'occupied'];
+            foreach ($animalProperties as $animalProperty) {
+                $row[] = $animalProperty;
+            }
+            $row[] = $cage->getTimeCreatedAt();
+            $fullCageTable->addRow($row);
+        }
+        return $fullCageTable->getTable();
+    }
+
     public function getDataTable(): string
     {
         $table = new Console_Table();
@@ -118,16 +150,21 @@ class CageManager
         return $table->getTable();
     }
 
+    // Im building cage and animal objects from csv file
     private function initializeFromFile(): void
     {
         $data = FileManager::getData();
-
-        foreach ($data as $element) {
-            if (!empty($element[2])) {
-                $this->existingCages[$element[0]] =
-                    new Cage((int)$element[0],$element[5], new Animal($element[2], (int)$element[3], $element[4]));
+        foreach ($data as $cage) {
+            if (!empty($cage[self::HEADER['occupied']])) {
+                $this->existingCages[(int)$cage[self::HEADER['cageNr']]] =
+                    new Cage((int)$cage[self::HEADER['cageNr']], $cage[self::HEADER['createdAt']]
+                        , new Animal($cage[self::HEADER['name']]
+                            , (float)$cage[self::HEADER['weight']]
+                            , $cage[self::HEADER['gender']]));
             } else {
-                $this->existingCages[(int)$element[0]] = new Cage((int)$element[0],$element[5]);
+                $this->existingCages[(int)$cage[self::HEADER['cageNr']]] =
+                    new Cage((int)$cage[self::HEADER['cageNr']]
+                        , $cage[self::HEADER['createdAt']]);
             }
         }
     }
